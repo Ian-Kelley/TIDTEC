@@ -12,8 +12,7 @@ import cartopy.io.img_tiles as cimgt
 from matplotlib.tri import Triangulation, UniformTriRefiner
 import os
 
-df = pd.read_pickle('los_20170908.pkl')
-df = df.where(df['elm'] > 30).dropna()
+
 
 
 def plot_still(time, df, i, frame_code):
@@ -52,4 +51,6 @@ def plot_series(df):
     		frame_code = plot_still(time, df, frame_attempt, frame_code)
 
 if __name__ == "__main__":
-	plot_series(df)
+    df = pd.read_pickle('los_20170908.pkl')
+    df = df.where(df['elm'] > 30).dropna()
+    plot_series(df)

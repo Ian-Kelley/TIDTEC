@@ -724,7 +724,7 @@ class CalcFov(object):
 
         # If the rear lobe is desired, adjust the azimuthal offset from the
         # boresite
-        if fov_dir is 'back':
+        if fov_dir == 'back':
             bore_offset = numpy.pi - bore_offset
 
         # Correct the sign based on the sign of the zero-elevation off-boresight
