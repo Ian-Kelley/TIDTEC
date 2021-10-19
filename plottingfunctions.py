@@ -43,3 +43,74 @@ def get_outline(radar, beam):
 
     return path, interp
 
+def vel_ts(tec_df, radar, beam, startrange, endrange, start, end):
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    import pandas as pd
+    import numpy as np
+    path, interp = get_outline(radar, beam)
+    tec_df['contained'] = path.contains_points(np.vstack((tec_df.glon, tec_df.gdlat)).T) 
+    part = tec_df.where(tec_df['contained'] == 1).dropna()
+    part = part.where(startrange < part.nrange)
+    part = part.where(part.nrange < endrange).dropna()
+    fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(9, 2.7))
+    axs.scatter(part.datetime, part['30min_detrend'], s=.25, marker='s', c='k')
+    locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
+    formatter = mdates.ConciseDateFormatter(locator)
+    axs.xaxis.set_major_locator(locator)
+    axs.xaxis.set_major_formatter(formatter)
+    plt.title('Detrended TEC between ' + str(startrange) + ' and ' + str(endrange) +'km')
+    axs.set_ylim([-5, 5])
+    axs.set_xlim([start, end])
+    grouped = part.set_index('datetime').groupby(pd.Grouper(freq='s')).mean().dropna()
+    axs.plot(grouped.index, grouped['30min_detrend'], c='r')
+
+def powerplot(filename, maxrange=60):
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    rad_df = pd.read_pickle(filename)
+    rad_df.slist = rad_df.slist * 45
+    code = filename[-9:-6]
+    fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(10, 3))
+    beam_num = int(rad_df.bmnum.unique()[0])
+    fig.suptitle(code.upper() + ' Beam #' + str(beam_num), fontsize=16)
+    plt.scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3)
+    cbar = plt.colorbar()
+    cbar.set_label('Power, dB')
+
+def threeplot(radar, beam, rad_df, tec_df, start, end):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import matplotlib.dates as mdates
+    fig, axs = plt.subplots(3, 1, constrained_layout=True, figsize=(10, 9))
+
+    #plotting TEC data only
+    path, interp = get_outline(radar, beam)
+    tec_df['contained'] = path.contains_points(np.vstack((tec_df.glon, tec_df.gdlat)).T) 
+    part = tec_df.where(tec_df['contained'] == 1).dropna()
+    part['nrange'] = 45*interp(part.glon, part.gdlat)  
+    a1 = axs[0].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.3, s=2, cmap='plasma') 
+    cbar = fig.colorbar(a1, ax=axs[0]) 
+    cbar.set_alpha(1)
+    cbar.set_label('dTEC, TECU') 
+
+    #for plotting radar data
+    beam_num = int(rad_df.bmnum.unique()[0])
+    rad_df.slist = rad_df.slist * 45
+    rad = axs[1].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3)
+    cbar = fig.colorbar(rad, ax=axs[1]) 
+
+    #plotting both at once
+    axs[2].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.3, s=2, cmap='plasma')
+    axs[2].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3)
+
+    #format the figure
+    #matplotlib.rcParams['figure.dpi'] = 100 
+    locator = mdates.AutoDateLocator(minticks=3, maxticks=7) 
+    formatter = mdates.ConciseDateFormatter(locator)
+    for ax in axs: 
+        ax.xaxis.set_major_locator(locator) 
+        ax.xaxis.set_major_formatter(formatter) 
+        ax.set_xlim([start, end]) 
+        ax.set_ylim([0, 2700]) 
+        ax.set_ylabel('Range, km')
