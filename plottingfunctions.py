@@ -69,7 +69,7 @@ def threeplot(radar, beam, rad_df, tec_df, start, end):
     tec_df['contained'] = path.contains_points(np.vstack((tec_df.glon, tec_df.gdlat)).T) 
     part = tec_df.where(tec_df['contained'] == 1).dropna()
     part['nrange'] = 45*interp(part.glon, part.gdlat)  
-    a1 = axs[0].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.3, s=2, cmap='plasma') 
+    a1 = axs[0].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.5, s=3, cmap='plasma') 
     cbar = fig.colorbar(a1, ax=axs[0]) 
     cbar.set_alpha(1)
     cbar.set_label('dTEC, TECU') 
@@ -82,8 +82,8 @@ def threeplot(radar, beam, rad_df, tec_df, start, end):
     cbar.set_label('SD Power, dB')
 
     #plotting both at once
-    axs[2].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.3, s=2, cmap='plasma')
-    axs[2].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3, alpha=.3)
+    axs[2].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.5, s=2, cmap='plasma')
+    axs[2].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3, alpha=.5)
 
     #format the figure
     locator = mdates.AutoDateLocator(minticks=3, maxticks=7) 

@@ -27,20 +27,12 @@ def get_len(filename):
     size = int(data.size / 2)
     return size
 
-def get_df():
-    df1 = pd.read_pickle('los_20140326.pkl')
-    #print('df1 load')
-    #df2 = pd.read_pickle('los_20170907_early.pkl')
-    #print('df2 load')
-    #df = pd.concat([df1, df2])
-    #del df1
-    #del df2
-    return df1
+
 
 def clean_df(df, start, end, extent):
     df = df[df['datetime'] > start]
     df = df[df['datetime'] < end]
-    df = df[df['elm'] > 30]
+    df = df[df['elm'] > 30] #this line imposes an elevation cutoff, some say 30 degrees is ok, but this throws out a lot more data
     df = df[df['gdlat'] > extent[0]]
     df = df[df['gdlat'] < extent[1]]
     df = df[df['glon'] > extent[2]]
@@ -57,19 +49,21 @@ def detrend_df(df):
 
 if __name__ == "__main__":
     #change these
-    filename = 'los_20150107.001.h5'
-    start = dt.datetime(2015, 1, 7, 21)
-    end = dt.datetime(2015, 1, 7, 23)
+    filename = 'los_20180826.001.h5'
+    start = dt.datetime(2018, 8, 26)
+    end = dt.datetime(2018, 8, 26, 6)
     extent = [20, 70, -145, -60]
 
     #conversion script
     len = get_len(filename)
-    df = quick_convert(filename, int(len * 3 / 4), -1)
+    df = quick_convert(filename, 0, -1)#this line will work faster if only a subset is used.  For example for 0-3 UT, we only need the first part of 
+    #the file, so we can do quick_convert(filename, 0, int(len / 4)), which only reads the first 1/4 of a 5-10 GB file and speeds things up
     print('df converted')
     df = clean_df(df, start, end, extent)
     print('df cleaned')
-    #df = detrend_df(df)
-    #print('df detrended')
+    df = detrend_df(df)
+    print('df detrended')
+    
     df.to_pickle(filename.partition(".")[0] + '.pkl')
 
  
