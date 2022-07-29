@@ -15,9 +15,9 @@ def plot_still(time, df, frame_code):
     ax.add_feature(Nightshade(time, alpha=0.15))
     ax.set_title(str(time), size=30)
     part = df[df['datetime'] == time]
-    if(len(part.tec)) < 1000:#reurn if not enough points
+    if(len(part.tec)) < 10000:#reurn if not enough points
         return frame_code
-    mesh = ax.scatter(part.glon, part.gdlat, c=part['30min_detrend'], transform=ccrs.PlateCarree(), vmin=5, vmax=-5, cmap='plasma', s=30, alpha=.8)
+    mesh = ax.scatter(part.glon, part.gdlat, c=part['30min_detrend'], transform=ccrs.PlateCarree(), vmin=1, vmax=-1, cmap='plasma', s=15)
     cbar = plt.colorbar(mesh, fraction=0.046, pad=0.04)
     cbar.set_label('detrend TECu')
     plt.savefig(f'{frame_code:03d}' + '.png')
@@ -35,10 +35,12 @@ def plot_series(df, start, end, cadence):
 
 if __name__ == "__main__":
     #change these
-    start = dt.datetime(2018, 8, 26, 2)
-    end = dt.datetime(2018, 8, 26, 5)
+    start = dt.datetime(2017, 9, 7, 23)
+    end = start + dt.timedelta(hours=4)
+
     cadence = dt.timedelta(seconds = 30) 
-    df = pd.read_pickle('los_20180826.pkl')
+    filename = 'los_' + str(start.year) + str(start.month).zfill(2) + str(start.day).zfill(2) + '.pkl'
+    df = pd.read_pickle(filename)
     plot_series(df, start, end, cadence)
     #run ffmpeg 
 

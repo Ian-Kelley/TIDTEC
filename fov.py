@@ -162,7 +162,6 @@ class FoVCarto(GeoAxes):
         p_ranges = list(range(p_min, p_max + 1, p_step))
         p_ranges.insert(0, p_lb)
         p_ranges.append(p_ub)        
-        
         Px = np.zeros((nbeam, nrange))*np.nan
         idbs, idgs = dat["bmnum"], dat["slist"]
         params = dat[p_name]

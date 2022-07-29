@@ -8,7 +8,8 @@ def single_plot(time, df):
         part = df[df['datetime'] == time + dt.timedelta(seconds = 30)]
     ax = fig.add_subplot(1, 1, 1, projection="fovcarto",coords="geo", plot_date=time,map_projection=ccrs.Orthographic(central_longitude=-100, central_latitude=60))
     ax.set_extent([-130, -70, 30, 65])
-    ax.set_title(time.strftime('%H:%M UT'), size=20)
+    date_time = date_time = time.strftime("%m/%d/%Y, %H:%M:%S")
+    ax.set_title(date_time + ' UT', size=20)
     mesh = ax.scatter(part.glon, part.gdlat, c=part['30min_detrend'], transform=ccrs.PlateCarree(), vmin=-1, vmax=1, cmap='plasma', s=8, zorder=0)
     pos = ax.get_position()
     ax.grid_on()
@@ -59,42 +60,101 @@ def tecplot(radar, beam, tec_df, start, end):
     cbar.set_alpha(1)
     cbar.set_label('dTEC, TECU') 
 
-def threeplot(radar, beam, rad_df, tec_df, start, end):
+
+
+def threeplot(radar, beam, rad_df, tec_df, start, end, sensitivity=1, ylim=2700, plot_ground=False, plot_v=False, plots='all', savefig=False):
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib.dates as mdates
-    fig, axs = plt.subplots(3, 1, constrained_layout=True, figsize=(9, 8))
-    #plotting TEC data only
-    path, interp = get_outline(radar, beam)
-    tec_df['contained'] = path.contains_points(np.vstack((tec_df.glon, tec_df.gdlat)).T) 
-    part = tec_df.where(tec_df['contained'] == 1).dropna()
-    part['nrange'] = 45*interp(part.glon, part.gdlat)  
-    a1 = axs[0].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.5, s=3, cmap='plasma') 
-    cbar = fig.colorbar(a1, ax=axs[0]) 
-    cbar.set_alpha(1)
-    cbar.set_label('dTEC, TECU') 
+    import matplotlib as mpl
+    mpl.rcParams['figure.dpi'] = 200
 
-    #for plotting radar data
-    beam_num = int(rad_df.bmnum.unique()[0])
-    rad_df.slist = rad_df.slist * 45
-    rad = axs[1].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3)
-    cbar = fig.colorbar(rad, ax=axs[1]) 
-    cbar.set_label('SD Power, dB')
+    if plots=='all':
+        fig, axs = plt.subplots(3, 1, constrained_layout=True, figsize=(8, 7))
+    elif plots=='sd':
+        fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(9, 3))
+    elif plots=='tec':
+        fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(9, 3))
+    elif plots=='both':
+        fig, axs = plt.subplots(2, 1, constrained_layout=True, figsize=(9, 5))
 
-    #plotting both at once
-    axs[2].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-5, vmax=5, marker='s', alpha=.5, s=2, cmap='plasma')
-    axs[2].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3, alpha=.5)
+    if plots=='all' or plots=='tec' or plots=='both':
+        #plotting TEC data only
+        path, interp = get_outline(radar, beam)
+        tec_df['contained'] = path.contains_points(np.vstack((tec_df.glon, tec_df.gdlat)).T) 
+        part = tec_df.where(tec_df['contained'] == 1).dropna()
+        part['nrange'] = 45*interp(part.glon, part.gdlat)  
+        if plots=='tec':
+            a1 = axs.scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-1 * sensitivity, vmax=sensitivity, marker='s', alpha=.5, s=3, cmap='plasma') 
+            cbar = fig.colorbar(a1, ax=axs) 
+        else:
+            a1 = axs[0].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-1 * sensitivity, vmax=sensitivity, marker='s', alpha=.5, s=3, cmap='plasma') 
+            cbar = fig.colorbar(a1, ax=axs[0]) 
+        cbar.set_alpha(1)
+        cbar.set_label('dTEC, TECU') 
+
+    if plots=='all' or plots=='sd' or 'both':
+        #for plotting radar data
+        rad_df = rad_df.where(rad_df.bmnum == beam).dropna()
+        beam_num = int(rad_df.bmnum.unique()[0])
+        rad_df.slist = rad_df.slist * 45
+        #this next line will use ground range estimation from Bristow et al. 1994
+        if plot_ground:
+            Re = 6371#km radius of earth
+            h = 250#km altitude of peak density
+            rad_df.slist =Re * np.arcsin((((rad_df.slist ** 2) / 4) - (h**2)) ** 0.5  / Re)
+
+        rad_df.slist = rad_df.slist 
+        if plot_v:
+            if plots=='sd':
+                rad = axs.scatter(rad_df.time, rad_df.slist, c = rad_df.v, vmin = -500, vmax=500, cmap='RdBu', marker = 's', s=3)
+                cbar = fig.colorbar(rad, ax=axs) 
+                axs.set_facecolor('lightgray')
+                
+            else:
+                rad = axs[1].scatter(rad_df.time, rad_df.slist, c = rad_df.v, vmin = -500, vmax=500, cmap='RdBu', marker = 's', s=3)
+                cbar = fig.colorbar(rad, ax=axs[1]) 
+                axs[1].set_facecolor('lightgray')
+            cbar.set_label('SD Velocity, m/s')
+            
+        else:
+            if plots=='sd':
+                rad = axs.scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3)
+                cbar = fig.colorbar(rad, ax=axs) 
+            else:
+                rad = axs[1].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3)
+                cbar = fig.colorbar(rad, ax=axs[1]) 
+            cbar.set_label('SD Power, dB')
+
+    if plots=='all':
+        #plotting both at once
+        axs[2].scatter(part.datetime, part.nrange, c=part['30min_detrend'], vmin=-1 * sensitivity, vmax=sensitivity, marker='s', alpha=1, s=2, cmap='plasma')
+        if plot_v:
+            axs[2].scatter(rad_df.time, rad_df.slist, c = rad_df.v, vmin = -500, vmax=500, cmap='RdBu', marker = 's', s=3, alpha=1)
+        else:    
+            axs[2].scatter(rad_df.time, rad_df.slist, c = rad_df.p_l, vmin = 0, vmax=40, cmap='jet', marker = 's', s=3, alpha=0.7)
 
     #format the figure
     locator = mdates.AutoDateLocator(minticks=3, maxticks=7) 
     formatter = mdates.ConciseDateFormatter(locator)
+    fig.suptitle(radar +' beam #' + str(beam),  fontsize="x-large")
 
-    for ax in axs: 
-        ax.xaxis.set_major_locator(locator) 
-        ax.xaxis.set_major_formatter(formatter) 
-        ax.set_xlim([start, end]) 
-        ax.set_ylim([0, 2700]) 
-        ax.set_ylabel('Range, km')
+    if plots=='sd' or plots=='tec':
+        axs.xaxis.set_major_locator(locator) 
+        axs.xaxis.set_major_formatter(formatter) 
+        axs.set_xlim([start, end]) 
+        axs.set_ylim([0, ylim]) 
+        axs.set_ylabel('Range, km')
+    else:
+        for ax in axs: 
+            ax.xaxis.set_major_locator(locator) 
+            ax.xaxis.set_major_formatter(formatter) 
+            ax.set_xlim([start, end]) 
+            ax.set_ylim([0, ylim]) 
+            ax.set_ylabel('Range, km')
+    if savefig:
+        fig.savefig(radar +' beam #' + str(beam) + ".pdf", bbox_inches='tight')
+        fig.savefig(radar +' beam #' + str(beam) + ".png", bbox_inches='tight')
 
 def plot_still(time, df, frame_code, start):
     import warnings
